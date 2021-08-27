@@ -34,6 +34,10 @@ Which will dump PE headers of newly generated Reflective DLL containing Beacon's
 - Implement ETW unregistration instead of brutal memory patching.
 - Introduce typical anti-emulation/anti-sandboxing guardrails - delaying execution, validating safe environments (_am I, the ReflectiveLoader, running inside of an emulator?_)
 
+## Known Issues
+
+- **x86 Reflective Loader does not work at the moment!**
+
 
 ## Other work
 

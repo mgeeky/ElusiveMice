@@ -9,6 +9,13 @@ We can attempt to combat these detections by pre-pending our injected capabiliti
 At the end of the day, we Red Teamers are getting paid for _raising the bar_, aren't we? :)
 
 
+## Features
+
+- AMSI Bypass through `amsi!AmsiScanBuffer` memory patch
+- ETW Bypass through `ntdll!EtwEventWrite` memory patch
+- WLDP Bypass through `wdlp!WldpQueryDynamicCodeTrust` memory patch
+
+
 ## Usage
 
 1. Load `rdll_loader.cna` script into Cobalt Strike

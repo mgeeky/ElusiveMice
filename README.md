@@ -14,6 +14,7 @@ At the end of the day, we Red Teamers are getting paid for _raising the bar_, ar
 - AMSI Bypass through `amsi!AmsiScanBuffer` memory patch
 - ETW Bypass through `ntdll!EtwEventWrite` memory patch
 - WLDP Bypass through `wdlp!WldpQueryDynamicCodeTrust` memory patch
+- utilizes changed API/module name dynamic resolution hashes to avoid simple signature detections
 
 
 ## Usage

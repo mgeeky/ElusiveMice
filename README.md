@@ -1,4 +1,4 @@
-# elusiveMice - custom Cobalt Strike User-Defined Reflective Loader 
+# ElusiveMice - custom Cobalt Strike User-Defined Reflective Loader 
 
 This is a fork of [Cobalt Strike's User-Defined Reflective Loader](https://www.cobaltstrike.com/help-user-defined-reflective-loader) which in turn is a fork of [Stephen Fewer's ReflectiveDLLInjection](https://github.com/stephenfewer/ReflectiveDLLInjection) implementation, but with a _slight_ plot twist - it adds a few well-known AV/EDR evasion hooks/patches!
 

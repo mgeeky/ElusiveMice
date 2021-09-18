@@ -4,8 +4,7 @@
 # Enable Debug of PE content
 # The generated PE content will be displayed in the script console if debug is true
 
-#$debug = "true";
-$debug = "true";
+$debug = "false";
 
 
 # ===========================================================================

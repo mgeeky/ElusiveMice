@@ -142,6 +142,17 @@ __forceinline DWORD hash( char * c )
     return h;
 }
 //===============================================================================================//
+
+// src: 
+//   https://modexp.wordpress.com/2019/06/03/disable-amsi-wldp-dotnet/
+typedef struct tagHAMSICONTEXT {
+  DWORD        Signature;          // "AMSI" or 0x49534D41
+  PWCHAR       AppName;            // set by AmsiInitialize
+  LPVOID       Antimalware;       // set by AmsiInitialize
+  DWORD        SessionCount;       // increased by AmsiOpenSession
+} _HAMSICONTEXT, *_PHAMSICONTEXT;
+
+
 typedef struct _UNICODE_STR
 {
   USHORT Length;

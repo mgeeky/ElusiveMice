@@ -15,7 +15,7 @@ At the end of the day, we Red Teamers are getting paid for _raising the bar_, ar
 - Wipes own PE Headers and most of the ReflectiveLoader's function code by zeroing them out.
 - AMSI Bypass through `amsi!AmsiScanBuffer` one-byte memory patch incrementing `'AMSI'` constant in assembly
 - ETW Bypass through `ntdll!EtwEventWrite` memory patch (_return 0_ technique)
-- (Temporarily not used) ~WLDP Bypass through `wdlp!WldpQueryDynamicCodeTrust` memory patch~
+- _(Temporarily not used)_ ~WLDP Bypass through `wdlp!WldpQueryDynamicCodeTrust` memory patch~
 - utilizes changed API/module name dynamic resolution hashes to avoid simple signature detections
 
 

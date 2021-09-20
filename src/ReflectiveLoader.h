@@ -35,27 +35,15 @@
 
 #include "ReflectiveDLLInjection.h"
 
-typedef HMODULE (WINAPI * LOADLIBRARYA)( LPCSTR );
-typedef FARPROC (WINAPI * GETPROCADDRESS)( HMODULE, LPCSTR );
-typedef LPVOID  (WINAPI * VIRTUALALLOC)( LPVOID, SIZE_T, DWORD, DWORD );
+#define APPLY_PATCHES
+
+
+typedef HMODULE(WINAPI* LOADLIBRARYA)(LPCSTR);
+typedef FARPROC(WINAPI* GETPROCADDRESS)(HMODULE, LPCSTR);
+typedef LPVOID(WINAPI* VIRTUALALLOC)(LPVOID, SIZE_T, DWORD, DWORD);
 typedef BOOL(WINAPI* VIRTUALPROTECT)(LPVOID, SIZE_T, DWORD, PDWORD);
 typedef DWORD(NTAPI* NTFLUSHINSTRUCTIONCACHE)(HANDLE, PVOID, ULONG);
-typedef void (WINAPI* OUTPUTDEBUGSTR)(const char*);
 
-
-/*
-* These hashes are valid for HASH_KEY = 13
- 
-#define KERNEL32DLL_HASH                0x6A4ABC5B
-#define NTDLLDLL_HASH                   0x3CFA685D
-
-#define LOADLIBRARYA_HASH               0xEC0E4E8E
-#define GETPROCADDRESS_HASH             0x7C0DFCAA
-#define VIRTUALALLOC_HASH               0x91AFCA54
-#define VIRTUALPROTECT_HASH             0x7946c61b
-#define OUTPUTDEBUG_HASH                0x470d22bc
-#define NTFLUSHINSTRUCTIONCACHE_HASH    0x534C0AB8
-*/
 
 #define KERNEL32DLL_HASH                0xa6154c3a
 #define NTDLLDLL_HASH                   0x0521447a
@@ -64,7 +52,6 @@ typedef void (WINAPI* OUTPUTDEBUGSTR)(const char*);
 #define GETPROCADDRESS_HASH             0x6bac2f89
 #define VIRTUALALLOC_HASH               0x9ee2d962
 #define VIRTUALPROTECT_HASH             0x9154022f
-#define OUTPUTDEBUG_HASH                0x206846d6
 #define NTFLUSHINSTRUCTIONCACHE_HASH    0x7353e65d
 
 #define IMAGE_REL_BASED_ARM_MOV32A      5
@@ -98,20 +85,12 @@ typedef void (WINAPI* OUTPUTDEBUGSTR)(const char*);
 #define ETW_PATCH_BYTES {'\x48', '\x33', '\xc0', '\xc3'}
 #define ETW_PATCH_SIZE 4
 
-// mov eax,0x80070057 ; ret
-#define AMSISCANBUFFER_PATCH_SIZE 6
-#define AMSISCANBUFFER_PATCH_BYTES  {'\xb8','\x57','\x00','\x07','\x80','\xc3'}
-
 #else
 #ifdef WIN_X86
 
 // xor eax, eax ; ret
 #define ETW_PATCH_BYTES {'\x33', '\xc0', '\xc2', '\x14', '\x00'}
 #define ETW_PATCH_SIZE 5
-
-// mov eax,0x80070057 ; ret 0x18
-#define AMSISCANBUFFER_PATCH_SIZE 8
-#define AMSISCANBUFFER_PATCH_BYTES  {'\xb8','\x57','\x00','\x07','\x80','\xc2', '\x18', '\x00'}
 
 #else WIN_ARM
 
@@ -125,40 +104,70 @@ typedef void (WINAPI* OUTPUTDEBUGSTR)(const char*);
 //===============================================================================================//
 #pragma intrinsic( _rotr )
 
-__forceinline DWORD ror( DWORD d )
+__forceinline DWORD ror(DWORD d)
 {
-    return _rotr( d, HASH_KEY );
+    return _rotr(d, HASH_KEY);
 }
 
-__forceinline DWORD hash( char * c )
+__forceinline DWORD hash(char* c)
 {
     register DWORD h = 0;
     do
     {
-        h = ror( h );
+        h = ror(h);
         h += *c;
-    } while( *++c );
+    } while (*++c);
 
     return h;
 }
+
+// src:
+//   https://github.com/hasherezade/module_overloading/blob/master/module_overloader/util.cpp#L4
+__forceinline DWORD translate_protect(DWORD sec_charact)
+{
+    if ((sec_charact & IMAGE_SCN_MEM_EXECUTE)
+        && (sec_charact & IMAGE_SCN_MEM_WRITE))
+    {
+        return PAGE_EXECUTE_READWRITE;
+    }
+
+    if (sec_charact & IMAGE_SCN_MEM_EXECUTE)
+    {
+        return PAGE_EXECUTE_READ;
+    }
+
+    /*
+        if ((sec_charact & IMAGE_SCN_MEM_READ)
+            && (sec_charact & IMAGE_SCN_MEM_WRITE))
+        {
+            return PAGE_READWRITE;
+        }
+
+        if (sec_charact & IMAGE_SCN_MEM_READ) {
+            return PAGE_READONLY;
+        }
+    */
+    return PAGE_READWRITE;
+}
+
 //===============================================================================================//
 
 // src: 
 //   https://modexp.wordpress.com/2019/06/03/disable-amsi-wldp-dotnet/
 typedef struct tagHAMSICONTEXT {
-  DWORD        Signature;          // "AMSI" or 0x49534D41
-  PWCHAR       AppName;            // set by AmsiInitialize
-  LPVOID       Antimalware;       // set by AmsiInitialize
-  DWORD        SessionCount;       // increased by AmsiOpenSession
-} _HAMSICONTEXT, *_PHAMSICONTEXT;
+    DWORD        Signature;          // "AMSI" or 0x49534D41
+    PWCHAR       AppName;            // set by AmsiInitialize
+    LPVOID       Antimalware;       // set by AmsiInitialize
+    DWORD        SessionCount;       // increased by AmsiOpenSession
+} _HAMSICONTEXT, * _PHAMSICONTEXT;
 
 
 typedef struct _UNICODE_STR
 {
-  USHORT Length;
-  USHORT MaximumLength;
-  PWSTR pBuffer;
-} UNICODE_STR, *PUNICODE_STR;
+    USHORT Length;
+    USHORT MaximumLength;
+    PWSTR pBuffer;
+} UNICODE_STR, * PUNICODE_STR;
 
 // WinDbg> dt -v ntdll!_LDR_DATA_TABLE_ENTRY
 //__declspec( align(8) ) 
@@ -177,103 +186,103 @@ typedef struct _LDR_DATA_TABLE_ENTRY
     SHORT TlsIndex;
     LIST_ENTRY HashTableEntry;
     ULONG TimeDateStamp;
-} LDR_DATA_TABLE_ENTRY, *PLDR_DATA_TABLE_ENTRY;
+} LDR_DATA_TABLE_ENTRY, * PLDR_DATA_TABLE_ENTRY;
 
 // WinDbg> dt -v ntdll!_PEB_LDR_DATA
 typedef struct _PEB_LDR_DATA //, 7 elements, 0x28 bytes
 {
-   DWORD dwLength;
-   DWORD dwInitialized;
-   LPVOID lpSsHandle;
-   LIST_ENTRY InLoadOrderModuleList;
-   LIST_ENTRY InMemoryOrderModuleList;
-   LIST_ENTRY InInitializationOrderModuleList;
-   LPVOID lpEntryInProgress;
+    DWORD dwLength;
+    DWORD dwInitialized;
+    LPVOID lpSsHandle;
+    LIST_ENTRY InLoadOrderModuleList;
+    LIST_ENTRY InMemoryOrderModuleList;
+    LIST_ENTRY InInitializationOrderModuleList;
+    LPVOID lpEntryInProgress;
 } PEB_LDR_DATA, * PPEB_LDR_DATA;
 
 // WinDbg> dt -v ntdll!_PEB_FREE_BLOCK
 typedef struct _PEB_FREE_BLOCK // 2 elements, 0x8 bytes
 {
-   struct _PEB_FREE_BLOCK * pNext;
-   DWORD dwSize;
+    struct _PEB_FREE_BLOCK* pNext;
+    DWORD dwSize;
 } PEB_FREE_BLOCK, * PPEB_FREE_BLOCK;
 
 // struct _PEB is defined in Winternl.h but it is incomplete
 // WinDbg> dt -v ntdll!_PEB
 typedef struct __PEB // 65 elements, 0x210 bytes
 {
-   BYTE bInheritedAddressSpace;
-   BYTE bReadImageFileExecOptions;
-   BYTE bBeingDebugged;
-   BYTE bSpareBool;
-   LPVOID lpMutant;
-   LPVOID lpImageBaseAddress;
-   PPEB_LDR_DATA pLdr;
-   LPVOID lpProcessParameters;
-   LPVOID lpSubSystemData;
-   LPVOID lpProcessHeap;
-   PRTL_CRITICAL_SECTION pFastPebLock;
-   LPVOID lpFastPebLockRoutine;
-   LPVOID lpFastPebUnlockRoutine;
-   DWORD dwEnvironmentUpdateCount;
-   LPVOID lpKernelCallbackTable;
-   DWORD dwSystemReserved;
-   DWORD dwAtlThunkSListPtr32;
-   PPEB_FREE_BLOCK pFreeList;
-   DWORD dwTlsExpansionCounter;
-   LPVOID lpTlsBitmap;
-   DWORD dwTlsBitmapBits[2];
-   LPVOID lpReadOnlySharedMemoryBase;
-   LPVOID lpReadOnlySharedMemoryHeap;
-   LPVOID lpReadOnlyStaticServerData;
-   LPVOID lpAnsiCodePageData;
-   LPVOID lpOemCodePageData;
-   LPVOID lpUnicodeCaseTableData;
-   DWORD dwNumberOfProcessors;
-   DWORD dwNtGlobalFlag;
-   LARGE_INTEGER liCriticalSectionTimeout;
-   DWORD dwHeapSegmentReserve;
-   DWORD dwHeapSegmentCommit;
-   DWORD dwHeapDeCommitTotalFreeThreshold;
-   DWORD dwHeapDeCommitFreeBlockThreshold;
-   DWORD dwNumberOfHeaps;
-   DWORD dwMaximumNumberOfHeaps;
-   LPVOID lpProcessHeaps;
-   LPVOID lpGdiSharedHandleTable;
-   LPVOID lpProcessStarterHelper;
-   DWORD dwGdiDCAttributeList;
-   LPVOID lpLoaderLock;
-   DWORD dwOSMajorVersion;
-   DWORD dwOSMinorVersion;
-   WORD wOSBuildNumber;
-   WORD wOSCSDVersion;
-   DWORD dwOSPlatformId;
-   DWORD dwImageSubsystem;
-   DWORD dwImageSubsystemMajorVersion;
-   DWORD dwImageSubsystemMinorVersion;
-   DWORD dwImageProcessAffinityMask;
-   DWORD dwGdiHandleBuffer[34];
-   LPVOID lpPostProcessInitRoutine;
-   LPVOID lpTlsExpansionBitmap;
-   DWORD dwTlsExpansionBitmapBits[32];
-   DWORD dwSessionId;
-   ULARGE_INTEGER liAppCompatFlags;
-   ULARGE_INTEGER liAppCompatFlagsUser;
-   LPVOID lppShimData;
-   LPVOID lpAppCompatInfo;
-   UNICODE_STR usCSDVersion;
-   LPVOID lpActivationContextData;
-   LPVOID lpProcessAssemblyStorageMap;
-   LPVOID lpSystemDefaultActivationContextData;
-   LPVOID lpSystemAssemblyStorageMap;
-   DWORD dwMinimumStackCommit;
+    BYTE bInheritedAddressSpace;
+    BYTE bReadImageFileExecOptions;
+    BYTE bBeingDebugged;
+    BYTE bSpareBool;
+    LPVOID lpMutant;
+    LPVOID lpImageBaseAddress;
+    PPEB_LDR_DATA pLdr;
+    LPVOID lpProcessParameters;
+    LPVOID lpSubSystemData;
+    LPVOID lpProcessHeap;
+    PRTL_CRITICAL_SECTION pFastPebLock;
+    LPVOID lpFastPebLockRoutine;
+    LPVOID lpFastPebUnlockRoutine;
+    DWORD dwEnvironmentUpdateCount;
+    LPVOID lpKernelCallbackTable;
+    DWORD dwSystemReserved;
+    DWORD dwAtlThunkSListPtr32;
+    PPEB_FREE_BLOCK pFreeList;
+    DWORD dwTlsExpansionCounter;
+    LPVOID lpTlsBitmap;
+    DWORD dwTlsBitmapBits[2];
+    LPVOID lpReadOnlySharedMemoryBase;
+    LPVOID lpReadOnlySharedMemoryHeap;
+    LPVOID lpReadOnlyStaticServerData;
+    LPVOID lpAnsiCodePageData;
+    LPVOID lpOemCodePageData;
+    LPVOID lpUnicodeCaseTableData;
+    DWORD dwNumberOfProcessors;
+    DWORD dwNtGlobalFlag;
+    LARGE_INTEGER liCriticalSectionTimeout;
+    DWORD dwHeapSegmentReserve;
+    DWORD dwHeapSegmentCommit;
+    DWORD dwHeapDeCommitTotalFreeThreshold;
+    DWORD dwHeapDeCommitFreeBlockThreshold;
+    DWORD dwNumberOfHeaps;
+    DWORD dwMaximumNumberOfHeaps;
+    LPVOID lpProcessHeaps;
+    LPVOID lpGdiSharedHandleTable;
+    LPVOID lpProcessStarterHelper;
+    DWORD dwGdiDCAttributeList;
+    LPVOID lpLoaderLock;
+    DWORD dwOSMajorVersion;
+    DWORD dwOSMinorVersion;
+    WORD wOSBuildNumber;
+    WORD wOSCSDVersion;
+    DWORD dwOSPlatformId;
+    DWORD dwImageSubsystem;
+    DWORD dwImageSubsystemMajorVersion;
+    DWORD dwImageSubsystemMinorVersion;
+    DWORD dwImageProcessAffinityMask;
+    DWORD dwGdiHandleBuffer[34];
+    LPVOID lpPostProcessInitRoutine;
+    LPVOID lpTlsExpansionBitmap;
+    DWORD dwTlsExpansionBitmapBits[32];
+    DWORD dwSessionId;
+    ULARGE_INTEGER liAppCompatFlags;
+    ULARGE_INTEGER liAppCompatFlagsUser;
+    LPVOID lppShimData;
+    LPVOID lpAppCompatInfo;
+    UNICODE_STR usCSDVersion;
+    LPVOID lpActivationContextData;
+    LPVOID lpProcessAssemblyStorageMap;
+    LPVOID lpSystemDefaultActivationContextData;
+    LPVOID lpSystemAssemblyStorageMap;
+    DWORD dwMinimumStackCommit;
 } _PEB, * _PPEB;
 
 typedef struct
 {
-    WORD    offset:12;
-    WORD    type:4;
-} IMAGE_RELOC, *PIMAGE_RELOC;
+    WORD    offset : 12;
+    WORD    type : 4;
+} IMAGE_RELOC, * PIMAGE_RELOC;
 //===============================================================================================//
 #endif
 //===============================================================================================//

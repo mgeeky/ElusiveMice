@@ -39,10 +39,14 @@ Which will dump PE headers of newly generated Reflective DLL containing Beacon's
 
 ## TODO
 
-- I'm focused on getting [Raphael's `unhook-bof`](https://github.com/rsmudge/unhook-bof) implementation added to _Reflective Loader_ - oh boy that would a killer, don't you think?
+Most of these features are going to be possible to be added when Cobalt Strike increase it's bytes limit for UDRLs (that's currently 5KB)...
+
 - Refactoring dumb memory patches into more subtle hooked implementations of routine wrappers for `AmsiScanBuffer` or `EtwEventWrite`
 - Implement ETW unregistration instead of brutal memory patching.
 - Introduce typical anti-emulation/anti-sandboxing guardrails - delaying execution, validating safe environments (_am I, the ReflectiveLoader, running inside of an emulator?_)
+- Add [Raphael's `unhook-bof`](https://github.com/rsmudge/unhook-bof) implementation to _Reflective Loader_
+- Add memory scanning routine eliminating dangling allocations with previous Cobalt Strike stagers
+- Hook Sleep to introduce Heap encryption
 
 ## Known Issues
 

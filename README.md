@@ -32,7 +32,7 @@ The CNA script may have `$debug` mode enabled by flipping the variable:
 # The generated PE content will be displayed in the script console if debug is true
 
 #$debug = "true";
-$debug = "true";
+$debug = "false";
 ```
 
 Which will dump PE headers of newly generated Reflective DLL containing Beacon's codebase.
@@ -46,7 +46,7 @@ Which will dump PE headers of newly generated Reflective DLL containing Beacon's
 
 ## Known Issues
 
-- **x86 Reflective Loader does not work at the moment!**
+- **x86 Reflective Loader does not work at the moment!** (that's why it is not available in this repository)
 
 
 ## Other work

@@ -58,6 +58,7 @@ Most of these features are going to be possible to be added when Cobalt Strike i
 So far there aren't many publicly available implementations of _User-Defined Reflective Loaders_, but the ones of a great quality that I'm aware of include:
 
 - [boku7's CobaltStrikeReflectiveLoader](https://github.com/boku7/CobaltStrikeReflectiveLoader) - reimplemting the idea in pure inline Assembly, thwarting naive static signatures (and oh, it too comes with AMSI and ETW patches!)
+- [SecIdiot TitanLdr](https://github.com/SecIdiot/TitanLdr) - Reflective Loader written in C and assembly for Cobalt Strike. Redirects DNS Beacon over DoH
 
 
 ## Author

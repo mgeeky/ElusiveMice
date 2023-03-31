@@ -159,9 +159,9 @@ set BEACON_RDLL_GENERATE_LOCAL {
 #  a string representing the size to use for the Reflective Loader.
 #  valid values are: [0, 5, 100]
 set BEACON_RDLL_SIZE {
-    print_info("UDRL - BEACON_RDLL_SIZE hook");
+    println("UDRL - BEACON_RDLL_SIZE hook");
 
     $size = 100;
-    print_info("UDRL - Use the $size $+ K Reflective Loader (elusiveMice)");
+    println("UDRL - Use the $size $+ K Reflective Loader (elusiveMice)");
     return "$size";
 }
